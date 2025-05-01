@@ -11,8 +11,11 @@ from PIL import Image
 from hydra import compose, initialize
 from functools import partial
 from omegaconf import OmegaConf
+from huggingface_hub import hf_hub_download
 from diffusers import UniPCMultistepScheduler
-
+from magicdrive.pipeline.pipeline_bev_controlnet import StableDiffusionBEVControlNetPipeline
+from magicdrive.networks.unet_addon_rawbox import BEVControlNetModel
+from magicdrive.networks.unet_2d_condition_multiview import UNet2DConditionModelMultiview
 sys.path.append(".")
 from magicdrive.misc.common import load_module
 from magicdrive.runner.img_utils import concat_6_views, img_m11_to_01
@@ -21,35 +24,42 @@ from demo.helper import preprocess_fn, draw_box_on_imgs, precompute_cam_ext
 
 def load_model_from(
         dir, weight_dtype=torch.float16, device="cuda", with_xformers=None):
-    original_overrides = OmegaConf.load(
-        os.path.join(dir, "hydra/overrides.yaml"))
+    # original_overrides = OmegaConf.load(
+    #     os.path.join(dir, "hydra/overrides.yaml"))
+    local_file = hf_hub_download(repo_id=cfg.model.controlnet_dir, filename="hydra/overrides.yaml")
+    original_overrides = OmegaConf.load(local_file)
     with initialize(version_base=None, config_path="../configs"):
         cfg = compose(config_name="test_config", overrides=original_overrides)
     pipe_param = {}
 
-    model_cls = load_module(cfg.model.model_module)
-    controlnet_path = os.path.join(dir, cfg.model.controlnet_dir)
-    controlnet = model_cls.from_pretrained(
-        controlnet_path, torch_dtype=weight_dtype)
+    # model_cls = load_module(cfg.model.model_module)
+    # controlnet_path = os.path.join(dir, cfg.model.controlnet_dir)
+    # controlnet = model_cls.from_pretrained(
+    #     controlnet_path, torch_dtype=weight_dtype)
+    controlnet = BEVControlNetModel.from_pretrained(cfg.model.controlnet_dir, subfolder="controlnet", torch_dtype=weight_dtype)
+    controlnet = controlnet.to(device)
     controlnet.eval()
     pipe_param["controlnet"] = controlnet
 
     if hasattr(cfg.model, "unet_module"):
-        unet_cls = load_module(cfg.model.unet_module)
-        unet_path = os.path.join(dir, cfg.model.unet_dir)
-        unet = unet_cls.from_pretrained(
-            unet_path, torch_dtype=weight_dtype)
+        # unet_cls = load_module(cfg.model.unet_module)
+        # unet_path = os.path.join(dir, cfg.model.unet_dir)
+        # unet = unet_cls.from_pretrained(
+        #     unet_path, torch_dtype=weight_dtype)
+        unet = UNet2DConditionModelMultiview.from_pretrained(cfg.model.unet_dir, subfolder="unet", torch_dtype=weight_dtype)
+        unet = unet.to(device)
         unet.eval()
         pipe_param["unet"] = unet
-
-    pipe_cls = load_module(cfg.model.pipe_module)
-    pipe = pipe_cls.from_pretrained(
-        cfg.model.pretrained_model_name_or_path,
-        **pipe_param,
-        safety_checker=None,
-        feature_extractor=None,  # since v1.5 has default, we need to override
-        torch_dtype=weight_dtype
-    )
+    
+    pipe = StableDiffusionBEVControlNetPipeline.from_pretrained(cfg.model.pretrained_model_name_or_path,torch_dtype=weight_dtype)
+    # pipe_cls = load_module(cfg.model.pipe_module)
+    # pipe = pipe_cls.from_pretrained(
+    #     cfg.model.pretrained_model_name_or_path,
+    #     **pipe_param,
+    #     safety_checker=None,
+    #     feature_extractor=None,  # since v1.5 has default, we need to override
+    #     torch_dtype=weight_dtype
+    # )
     pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
     pipe = pipe.to(device)
     if with_xformers is None:
