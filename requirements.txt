@@ -1,0 +1,12 @@
+pip install hydra-core
+pip install gradio==4.16.0
+
+# python setup.py install
+pip install accelerate==0.17.0 transformers==4.28.0
+pip install huggingface_hub==0.14.1
+
+pip install torch==2.0.0
+pip install torchvision==0.15.1
+
+cd thirdparty/diffusers
+pip install -e .

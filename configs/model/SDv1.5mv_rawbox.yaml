@@ -1,6 +1,7 @@
 name: SDv1.5mv-rawbox
 # flymin/MagicDrive-424x800-450ep
-pretrained_model_name_or_path: sd-legacy/stable-diffusion-v1-5
+# sd-legacy/stable-diffusion-v1-5
+pretrained_model_name_or_path: stable-diffusion-v1-5/stable-diffusion-v1-5
 bbox_mode: 'all-xyz'
 bbox_view_shared: false
 crossview_attn_type: basic

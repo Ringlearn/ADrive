@@ -172,7 +172,8 @@ class UNet2DConditionModelMultiview(UNet2DConditionModel):
         addition_embed_type_num_heads=64,
         # parameter added, we should keep all above (do not use kwargs)
         trainable_state="only_new",
-        neighboring_view_pair: Optional[dict] = None,
+        # neighboring_view_pair: Optional[dict] = None,
+        neighboring_view_pair: Optional[dict] = {0:[1,2]},
         neighboring_attn_type: str = "add",
         zero_module_type: str = "zero_linear",
         crossview_attn_type: str = "basic",
@@ -224,10 +225,24 @@ class UNet2DConditionModelMultiview(UNet2DConditionModel):
                 if crossview_attn_type == "basic":
                     _set_module(self, name, BasicMultiviewTransformerBlock(
                         **mod._args,
+                        # mod.named_parameters,
                         neighboring_view_pair=neighboring_view_pair,
                         neighboring_attn_type=neighboring_attn_type,
                         zero_module_type=zero_module_type,
                     ))
+        # for name, mod in list(self.named_modules()):
+        #     if isinstance(mod, BasicTransformerBlock):
+        #         if crossview_attn_type == "basic":
+        #             _set_module(self, name, BasicMultiviewTransformerBlock(
+        #                 dim=mod.norm1.normalized_shape[0],  # Extracting dim from LayerNorm
+        #                 num_attention_heads=mod.attn1.to_q.out_features, #// mod.attn1.to_q.in_features,  # Estimating heads
+        #                 attention_head_dim=mod.attn1.to_q.in_features, #// 1,  
+        #                 dropout=mod.attn1.to_out[1].p if isinstance(mod.attn1.to_out[1], torch.nn.Dropout) else 0.0,  
+        #                 cross_attention_dim=mod.attn2.to_k.in_features,  
+        #                 neighboring_view_pair=neighboring_view_pair,
+        #                 neighboring_attn_type=neighboring_attn_type,
+        #                 zero_module_type=zero_module_type,
+        #             ))
                 else:
                     raise TypeError(f"Unknown attn type: {crossview_attn_type}")
                 for k, v in _get_module(self, name).new_module.items():

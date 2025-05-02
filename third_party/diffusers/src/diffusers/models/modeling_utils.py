@@ -46,7 +46,8 @@ logger = logging.get_logger(__name__)
 
 
 if is_torch_version(">=", "1.9.0"):
-    _LOW_CPU_MEM_USAGE_DEFAULT = True
+    # _LOW_CPU_MEM_USAGE_DEFAULT = True
+    _LOW_CPU_MEM_USAGE_DEFAULT = False
 else:
     _LOW_CPU_MEM_USAGE_DEFAULT = False
 

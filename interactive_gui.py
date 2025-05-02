@@ -1,5 +1,7 @@
-import os
 import sys
+import os
+# thirdparty_path = os.path.join(os.path.dirname(__file__), 'thirdparty')
+# sys.path.append(thirdparty_path)
 import glob
 import torch
 import numpy as np
@@ -13,8 +15,6 @@ from functools import partial
 from omegaconf import OmegaConf
 from huggingface_hub import hf_hub_download
 from diffusers import UniPCMultistepScheduler
-sys.path.append("..")
-sys.path.append(r"D:\wfm\ADrive\magicdrive")
 from magicdrive.pipeline.pipeline_bev_controlnet import StableDiffusionBEVControlNetPipeline
 from magicdrive.networks.unet_addon_rawbox import BEVControlNetModel
 from magicdrive.networks.unet_2d_condition_multiview import UNet2DConditionModelMultiview
@@ -22,15 +22,17 @@ from magicdrive.misc.common import load_module
 from magicdrive.runner.img_utils import concat_6_views, img_m11_to_01
 from demo.helper import preprocess_fn, draw_box_on_imgs, precompute_cam_ext
 
+from huggingface_hub import login
 
+login(token="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")
 def load_model_from(
-        dir, weight_dtype=torch.float16, device="cuda", with_xformers=None):
+        cfg1, weight_dtype=torch.float16, device="cpu", with_xformers=None):
     # original_overrides = OmegaConf.load(
     #     os.path.join(dir, "hydra/overrides.yaml"))
-    local_file = hf_hub_download(repo_id=cfg.model.controlnet_dir, filename="hydra/overrides.yaml")
+    local_file = hf_hub_download(repo_id=cfg1.get("controlnet_dir"), filename="hydra/overrides.yaml")
     original_overrides = OmegaConf.load(local_file)
-    with initialize(version_base=None, config_path="../configs"):
-        cfg = compose(config_name="test_config", overrides=original_overrides)
+    with initialize(version_base=None, config_path="configs"):
+        cfg = compose(config_name="test_config.yaml", overrides=original_overrides)
     pipe_param = {}
 
     # model_cls = load_module(cfg.model.model_module)
@@ -47,11 +49,11 @@ def load_model_from(
         # unet_path = os.path.join(dir, cfg.model.unet_dir)
         # unet = unet_cls.from_pretrained(
         #     unet_path, torch_dtype=weight_dtype)
-        unet = UNet2DConditionModelMultiview.from_pretrained(cfg.model.unet_dir, subfolder="unet", torch_dtype=weight_dtype)
+        unet = UNet2DConditionModelMultiview.from_pretrained(cfg.model.pretrained_model_name_or_path, subfolder="unet", torch_dtype=weight_dtype)
         unet = unet.to(device)
         unet.eval()
         pipe_param["unet"] = unet
-    
+    print(cfg.model.pretrained_model_name_or_path)
     pipe = StableDiffusionBEVControlNetPipeline.from_pretrained(cfg.model.pretrained_model_name_or_path,torch_dtype=weight_dtype)
     # pipe_cls = load_module(cfg.model.pipe_module)
     # pipe = pipe_cls.from_pretrained(
@@ -129,8 +131,10 @@ if __name__ == "__main__":
     data_ids = []
     for sample in glob.glob(args.data):
         data_ids.append(os.path.basename(sample).split(".")[0])
-
-    cfg, pipe = load_model_from(args.model, with_xformers=args.xformers)
+    import yaml
+    with open("D:\wfm\ADrive\configs\model\SDv1.5mv_rawbox.yaml", "r") as file:
+        cfg1 = yaml.safe_load(file)
+    cfg, pipe = load_model_from(cfg1, with_xformers=args.xformers)
     # image = run_pipe(cfg, pipe, data, seed)
     runner = partial(run_pipe, cfg=cfg, pipe=pipe)
 
