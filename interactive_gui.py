@@ -24,7 +24,7 @@ from demo.helper import preprocess_fn, draw_box_on_imgs, precompute_cam_ext
 
 from huggingface_hub import login
 
-login(token="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")
+login(token="******")
 def load_model_from(
         cfg1, weight_dtype=torch.float16, device="cpu", with_xformers=None):
     # original_overrides = OmegaConf.load(
